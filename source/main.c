@@ -67,6 +67,8 @@ int main(int argc,char **argv)
 {
 	SYS_STDIO_Report(true);
 
+	CON_EnableGecko(1, 0);
+	
 	f32 yscale;
 
 	u32 xfbHeight;
@@ -687,7 +689,7 @@ int main(int argc,char **argv)
 		if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_A) {
 			if (advance == 1) {
 				advance = 0;
-				printf("%d\r", frame);
+				printf("%d\n", frame);
 				StopOgg();
 			} else {
 				advance = 1;
@@ -696,51 +698,51 @@ int main(int argc,char **argv)
 		if (advance != 1) {
 			if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_RIGHT) { 
 				frame++;
-				printf("%d\r", frame);
+				printf("%d\n", frame);
 			}
 			if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_LEFT) { 
 				frame = frame - 1;
-				printf("%d\r", frame);
+				printf("%d\n", frame);
 			}
 		}*/
 
 		switch(frame) {
 			case 1:
-				printf("\r");
+				printf("\n");
 				break;
 			case 188:
-				printf("I don't remember a damn thing from last week\r");
+				printf("I don't remember a damn thing from last week\n");
 				break;
 			case 344:
-				printf("I'm sorry I could never be the one you thought I was\r");	
+				printf("I'm sorry I could never be the one you thought I was\n");	
 				break;
 			case 518:
-				printf("I try my best but everybody's looking past me\r");
+				printf("I try my best but everybody's looking past me\n");
 				break;
 			case 689:
-				printf("I blacked out on the pavement and I think it's because\r");
+				printf("I blacked out on the pavement and I think it's because\n");
 				break;
 			case 856:
-				printf("She told me I was a waste of time, and I hated life\r");
+				printf("She told me I was a waste of time, and I hated life\n");
 				break;
 			case 1080:
-				printf("I was stuck and I had nowhere to go\r");
+				printf("I was stuck and I had nowhere to go\n");
 				break;
 			case 1200:
-				printf("and I know you're not a friend of mine, I'm not on your mind\r");
+				printf("and I know you're not a friend of mine, I'm not on your mind\n");
 				break;
 			case 1404:
-				printf("so I said fuck it, I guess I'll be alone\r");
+				printf("so I said fuck it, I guess I'll be alone\n");
 				break;
-			case 1598: printf("\r");break;
-			case 1600: printf("                       #                       #\r");break;
-			case 1602: printf("                      #                       #\r");break;
-			case 1604: printf("   ###   ##  #     # ###   ##  ###   ##     ####  ##      ###  ##\r");break;
-			case 1606: printf("  #  # #  #  # # #  #  # #### #  # ####     #   #  #    #  # #  #\r");break;
-			case 1608: printf(" #  #  ##    # #   #  #  ### #     ###      ##  ##      ###  ##\r");break;
-			case 1610: printf("******************************************************** # ***\r");break;
-			case 1612: printf(" (feat. jane remover) by juno     animation by lliy   ##\r");break;
-			case 1614: printf("\r");break;
+			case 1598: printf("\n");break;
+			case 1600: printf("                       #                       #\n");break;
+			case 1602: printf("                      #                       #\n");break;
+			case 1604: printf("   ###   ##  #     # ###   ##  ###   ##     ####  ##      ###  ##\n");break;
+			case 1606: printf("  #  # #  #  # # #  #  # #### #  # ####     #   #  #    #  # #  #\n");break;
+			case 1608: printf(" #  #  ##    # #   #  #  ### #     ###      ##  ##      ###  ##\n");break;
+			case 1610: printf("******************************************************** # ***\n");break;
+			case 1612: printf(" (feat. jane remover) by juno     animation by lliy   ##\n");break;
+			case 1614: printf("\n");break;
 		}
 
 		GX_SetTevOp(GX_TEVSTAGE0,GX_PASSCLR);
