@@ -73,9 +73,8 @@ int main(int argc,char **argv)
 
 	u32 xfbHeight;
 
-	Mtx view;
 	Mtx44 perspective;
-	Mtx model, modelview;
+	Mtx model, modelview, view;
 	Mtx model2;
 	Mtx mrx, mry, mrz;
 
@@ -89,11 +88,14 @@ int main(int argc,char **argv)
 
 	VIDEO_Init(); //In the devkitted pro. straight up "GX_Init()". and by "it()", haha, well. let's just say.   My graphits
 	WPAD_Init();
+	PAD_Init();
 	ASND_Init();
 
 	short advance = 1;
 
 	rmode = VIDEO_GetPreferredMode(NULL);
+	rmode->viWidth = 704;
+	rmode->viXOrigin = 8;
 
 	// allocate the fifo buffer
 	gpfifo = memalign(32,DEFAULT_FIFO_SIZE);
@@ -175,440 +177,6 @@ int main(int argc,char **argv)
 
 	GX_InvalidateTexAll();
 
-	guVector xaxis = {1,0,0};
-	guVector yaxis = {0,1,0};
-	guVector zaxis = {0,0,1};
-
-	guVector cam = {0.0F, -20.0F, 1.0F},
-		    up = {0.0F, 1.0F, 0.0F},
-		  look = {0.0F, 0.0F, 0.0F};
-	guLookAt(view, &cam, &up, &look);
-
-
-	// list of models and corresponding original arrays and copied arrays
-	//  _______________________________________________________________
-	// |       name       |   original arrays      |    copy arrays    |
-	// |__________________|________________________|___________________|
-	// |  the stage -v    |   stageVertPos         |   stageVertPosCop |
-	// |  the stage -c    |   stageVertCol         |   stageVertColCop |
-	// |     lake's hair-v|   lakehairVertPos      |    mdl1VertWork   |  
-	// |     lake's hair-c|   lakeHairVertCol      |    mdl1VertColk   |
-	// |     lake's head-v|   lakeHeadVertPos      |    mdl2VertWork   |
-	// |     lake's head-c|   lakeHeadVertCol      |    mdl2VertColk   |
-	// |  lake's eyes     |   lakeEyeVertPos       |    mdl3VertWork   |
-	// | lake's eyebrows v|  lakeEyebrowVertPos    |    mdl4VertWork   |
-	// | lake's body - v  |  lakeBodyVertPos       |    mdl5VertWork   |
-	// | lake's body - c  |  lakeBodyVertCol       |    mdl5VertColk   |
-	// |lake hair right v |lakeHairRipRightVertPos |    mdl6VertWork   |
-	// |lake hair right c |lakeHairRipRightVertCol |    mdl6VertColk   |
-	// |lake hair left v  | lakeHairRipLeftVertPos |    mdl7VertWork   |
-	// |lake hair left c  | lakeHairRipLeftVertCol |    mdl7VertWork   |
-	// |                  |                        |                   |
-	// |   mouth eh vp    |lakeMouthEhVertPos      |    mouthEhWork    |
-	// |   mouth eh vc    |lakeMouthEhVertCol      |    mouthEhColk    |
-	// |  mouth teeth vp  |lakeMouthTeethVertPos   |    mouthTeWork    |
-	// |  mouth teeth vc  |lakeMouthTeethVertCol   |    mouthTeColk    |
-	// |  mouth close vp  |lakeMouthCloseVertPos   |    mouthClWork    |
-	// |  mouth o vp      |lakeMouthOVertPos       |    mouthOWork     |
-	// |  mouth m vp      |lakeMouthMVertPos       |    mouthMWork     |
-	// |                  |                        |                   |
-	// | scissor 1 v      |scissor1VertPos         |    sc1vpcop       |
-	// | scissor 1 c      |scissor1VertCol         |    sc1vccop       |
-	// | scissor 2 v      |scissor2VertPos         |    sc2vpcop       |
-	// | scissor 2 c      |scissor2VertCol         |    sc2vccop       |
-	// | string           |stringVertPos           |stringVertPosCop   |
-	// |                  |                        |                   |
-	// |credit text 1     |text1VertPos            |text1VertPosCop    |
-	// |credit text 2     |text2VertPos            |text2VertPosCop    |
-	// |credit text 3     |text3VertPos            |text3VertPosCop    |
-
-	// we'd want to copy verts into ram every frame if we were doing vertex deformation
-	// but we're just doing transformation on these models so we dont need to
-
-	f32 *stageVertPosCop;
-	stageVertPosCop = malloc(sizeof(f32) * (sizeof(stageVertPos) / sizeof(f32)));
-
-	f32 *stageVertColCop;
-	stageVertColCop = malloc(sizeof(f32) * (sizeof(stageVertCol) / sizeof(f32)));
-
-	f32 *mdl1VertWork;
-	mdl1VertWork = malloc(sizeof(f32) * (sizeof(lakehairVertPos) / sizeof(f32)));
-
-	f32 *mdl1VertColk;
-	mdl1VertColk = malloc(sizeof(f32) * (sizeof(lakeHairVertCol) / sizeof(f32)));
-
-	f32 *mdl2VertWork;
-	mdl2VertWork = malloc(sizeof(f32) * (sizeof(lakeHeadVertPos) / sizeof(f32)));
-
-	f32 *mdl2VertColk;
-	mdl2VertColk = malloc(sizeof(f32) * (sizeof(lakeHeadVertCol) / sizeof(f32)));
-
-	f32 *mdl3VertWork;
-	mdl3VertWork = malloc(sizeof(f32) * (sizeof(lakeEyeVertPos) / sizeof(f32)));
-
-	f32 *mdl4VertWork;
-	mdl4VertWork = malloc(sizeof(f32) * (sizeof(lakeEyebrowVertPos) / sizeof(f32)));
-
-	f32 *mdl5VertWork;
-	mdl5VertWork = malloc(sizeof(f32) * (sizeof(lakeBodyVertPos) / sizeof(f32)));
-	
-	f32 *mdl5VertColk;
-	mdl5VertColk = malloc(sizeof(f32) * (sizeof(lakeBodyVertCol) / sizeof(f32)));
-
-	f32 *mdl6VertWork;
-	mdl6VertWork = malloc(sizeof(f32) * (sizeof(lakeHairRipRightVertPos) / sizeof(f32)));
-	
-	f32 *mdl6VertColk;
-	mdl6VertColk = malloc(sizeof(f32) * (sizeof(lakeHairRipRightVertCol) / sizeof(f32)));
-
-	f32 *mdl7VertWork;
-	mdl7VertWork = malloc(sizeof(f32) * (sizeof(lakeHairRipLeftVertPos) / sizeof(f32)));
-	
-	f32 *mdl7VertColk;
-	mdl7VertColk = malloc(sizeof(f32) * (sizeof(lakeHairRipLeftVertCol) / sizeof(f32)));
-
-
-	f32 *mouthEhWork;
-	mouthEhWork = malloc(sizeof(f32) * (sizeof(lakeMouthEhVertPos) / sizeof(f32)));
-
-	f32 *mouthEhColk;
-	mouthEhColk = malloc(sizeof(f32) * (sizeof(lakeMouthEhVertCol) / sizeof(f32)));
-
-	f32 *mouthTeWork;
-	mouthTeWork = malloc(sizeof(f32) * (sizeof(lakeMouthTeethVertPos) / sizeof(f32)));
-
-	f32 *mouthTeColk;
-	mouthTeColk = malloc(sizeof(f32) * (sizeof(lakeMouthTeethVertCol) / sizeof(f32)));
-
-	f32 *mouthClWork;
-	mouthClWork = malloc(sizeof(f32) * (sizeof(lakeMouthCloseVertPos) / sizeof(f32)));
-
-	f32 *mouthOWork;
-	mouthOWork = malloc(sizeof(f32) * (sizeof(lakeMouthOVertPos) / sizeof(f32)));
-	
-	f32 *mouthMWork;
-	mouthMWork = malloc(sizeof(f32) * (sizeof(lakeMouthMVertPos) / sizeof(f32)));
-
-
-	f32 *sc1vpcop;
-	sc1vpcop = malloc(sizeof(f32) * (sizeof(scissor1VertPos) / sizeof(f32)));
-	
-	f32 *sc1vccop;
-	sc1vccop = malloc(sizeof(f32) * (sizeof(scissor1VertCol) / sizeof(f32)));
-
-	f32 *sc2vpcop;
-	sc2vpcop = malloc(sizeof(f32) * (sizeof(scissor2VertPos) / sizeof(f32)));
-	
-	f32 *sc2vccop;
-	sc2vccop = malloc(sizeof(f32) * (sizeof(scissor2VertCol) / sizeof(f32)));
-
-	f32 *stringVertPosCop;
-	stringVertPosCop = malloc(sizeof(f32) * (sizeof(stringVertPos) / sizeof(f32)));
-
-
-	f32 *text1VertPosCop;
-	text1VertPosCop = malloc(sizeof(f32) * (sizeof(text1VertPos) / sizeof(f32)));
-
-	f32 *text2VertPosCop;
-	text2VertPosCop = malloc(sizeof(f32) * (sizeof(text2VertPos) / sizeof(f32)));
-
-	f32 *text3VertPosCop;
-	text3VertPosCop = malloc(sizeof(f32) * (sizeof(text3VertPos) / sizeof(f32)));
-
-
-	for (int k = 0; k < sizeof(stageVertPos) / sizeof(f32); k++) { 
-		stageVertPosCop[k] = stageVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(stageVertCol) / sizeof(f32); k++) {
-		stageVertColCop[k] = stageVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakehairVertPos) / sizeof(f32); k++) { 
-		mdl1VertWork[k] = lakehairVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHairVertCol) / sizeof(f32); k++) {
-		mdl1VertColk[k] = lakeHairVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHeadVertPos) / sizeof(f32); k++) { 
-		mdl2VertWork[k] = lakeHeadVertPos[k];
-	}
-	
-	for (int k = 0; k < sizeof(lakeHeadVertCol) / sizeof(f32); k++) { 
-		mdl2VertColk[k] = lakeHeadVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeEyeVertPos) / sizeof(f32); k++) { 
-		mdl3VertWork[k] = lakeEyeVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeBodyVertPos) / sizeof(f32); k++) { 
-		mdl5VertWork[k] = lakeBodyVertPos[k];
-	}
-	
-	for (int k = 0; k < sizeof(lakeBodyVertCol) / sizeof(f32); k++) { 
-		mdl5VertColk[k] = lakeBodyVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHairRipRightVertPos) / sizeof(f32); k++) { 
-		mdl6VertWork[k] = lakeHairRipRightVertPos[k];
-	}
-	
-	for (int k = 0; k < sizeof(lakeHairRipRightVertCol) / sizeof(f32); k++) { 
-		mdl6VertColk[k] = lakeHairRipRightVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHairRipLeftVertPos) / sizeof(f32); k++) { 
-		mdl7VertWork[k] = lakeHairRipLeftVertPos[k];
-	}
-	
-	for (int k = 0; k < sizeof(lakeHairRipLeftVertCol) / sizeof(f32); k++) { 
-		mdl7VertColk[k] = lakeHairRipLeftVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeEyebrowVertPos) / sizeof(f32); k++) { 
-		mdl4VertWork[k] = lakeEyebrowVertPos[k];
-	}
-
-
-
-	for (int k = 0; k < sizeof(lakeMouthEhVertPos) / sizeof(f32); k++) { 
-		mouthEhWork[k] = lakeMouthEhVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthEhVertCol) / sizeof(f32); k++) { 
-		mouthEhColk[k] = lakeMouthEhVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthTeethVertPos) / sizeof(f32); k++) { 
-		mouthTeWork[k] = lakeMouthTeethVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthTeethVertCol) / sizeof(f32); k++) { 
-		mouthTeColk[k] = lakeMouthTeethVertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthCloseVertPos) / sizeof(f32); k++) { 
-		mouthClWork[k] = lakeMouthCloseVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthOVertPos) / sizeof(f32); k++) { 
-		mouthOWork[k] = lakeMouthOVertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthMVertPos) / sizeof(f32); k++) { 
-		mouthMWork[k] = lakeMouthMVertPos[k];
-	}
-	
-
-	for (int k = 0; k < sizeof(scissor1VertPos) / sizeof(f32); k++) { 
-		sc1vpcop[k] = scissor1VertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(scissor1VertCol) / sizeof(f32); k++) { 
-		sc1vccop[k] = scissor1VertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(scissor2VertPos) / sizeof(f32); k++) { 
-		sc2vpcop[k] = scissor2VertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(scissor2VertCol) / sizeof(f32); k++) { 
-		sc2vccop[k] = scissor2VertCol[k];
-	}
-
-	for (int k = 0; k < sizeof(stringVertPos) / sizeof(f32); k++) { 
-		stringVertPosCop[k] = stringVertPos[k];
-	}
-
-	
-	for (int k = 0; k < sizeof(text1VertPos) / sizeof(f32); k++) { 
-		text1VertPosCop[k] = text1VertPos[k];
-	}
-
-	for (int k = 0; k < sizeof(text2VertPos) / sizeof(f32); k++) { 
-		text2VertPosCop[k] = text2VertPos[k];
-	}
-		
-	for (int k = 0; k < sizeof(text3VertPos) / sizeof(f32); k++) { 
-		text3VertPosCop[k] = text3VertPos[k];
-	}
-
-	// list of animation  and corresponding original arrays and copied arrays
-	//  ----------------------------------------------------------------------       -----------------------------------------------------------------------
-	// |        name      |   original arrays           |    copy arrays       |    |                            discarded data                             |
-	// |__________________|_____________________________|______________________|    |_______________________________________________________________________|
-	//                                                                              |  hair animation  |lakeHairRegularAnim          |lakeHairRegularAnimCop|  
-	// |  head animation  |lakeHeadAnim                 |lakeHeadAnimCop       |
-	// |   eye animation  |lakeEyeAnim                  |lakeEyeAnimCop        |
-	// | leftpupil anim   |lakePupilLAnim               |lakePupilLAnimCop     |
-	// | rightpupilanim   |lakePupilRAnim               |lakePupilRAnimCop     |
-	// | eyebrow anim     |lakeEyebrowAnim              |lakeEyebrowAnimCop    |
-	// | body anim        |lakeTorsoAnim                |lakeTorsoAnimCop      |
-	// | left hair anim   |lakeHairRipLeftAnim          |lakeHairLeftAnimCop   |
-	// | rijt hair anim   |lakeHairRipRightAnim         |lakeHairRightAnimCop  |
-	// | scissor 1 anim   |scissor1Anim                 |scissor1AnimCop       |
-	// | scissor 2 anim   |scissor2Anim                 |scissor2AnimCop       |
-	// | string anim short|stringAnimShort              |stringAnimShortCop    |
-	// |lake Hair Clipping|lakeHairCutBitAnim           |lakeClipAnim          | 
-	
-	// | eh mouth anim    |lakeMouthEhAnim              |lakeMouthEhAnimCop    |
-	// |teeth mouth anim  |lakeMouthClosejawShoteefAnim |lakeMouthTeAnimCop    |
-	// |close mouth Anim  |lakeMouthCloseAnim           |lakeMouthClAnimCop    |
-	// | o mouth anim     |lakeMouthOAnim               |lakeMouthOAnimCop     |
-	// | m mouth anim     |lakeMouthMAnim               |lakeMouthMAnimCop     |
-
-	// | camera matricies |cameraAnim                   |camAnimCop            |
-	// | cam fov          |cameraFovAnim                |camFovAnimCop         |
-
-	/*f32 *lakeHairRegularAnimCop;
-	lakeHairRegularAnimCop = malloc(sizeof(f32) * (sizeof(lakeHairRegularAnim) / sizeof(f32)));*/
-
-	f32 *lakeHeadAnimCop;
-	lakeHeadAnimCop = malloc(sizeof(f32) * (sizeof(lakeHeadAnim) / sizeof(f32)));
-
-	f32 *lakeEyeAnimCop;
-	lakeEyeAnimCop = malloc(sizeof(f32) * (sizeof(lakeEyeAnim) / sizeof(f32)));
-
-	f32 *lakePupilLAnimCop;
-	lakePupilLAnimCop = malloc(sizeof(f32) * (sizeof(lakePupilLAnim) / sizeof(f32)));
-
-	f32 *lakePupilRAnimCop;
-	lakePupilRAnimCop = malloc(sizeof(f32) * (sizeof(lakePupilRAnim) / sizeof(f32)));
-	
-	f32 *lakeEyebrowAnimCop;
-	lakeEyebrowAnimCop = malloc(sizeof(f32) * (sizeof(lakeEyebrowAnim) / sizeof(f32)));
-	
-	f32 *lakeHairLeftAnimCop;
-	lakeHairLeftAnimCop = malloc(sizeof(f32) * (sizeof(lakeHairRipLeftAnim) / sizeof(f32)));
-
-	f32 *lakeHairRightAnimCop;
-	lakeHairRightAnimCop = malloc(sizeof(f32) * (sizeof(lakeHairRipRightAnim) / sizeof(f32)));
-
-	f32 *lakeTorsoAnimCop;
-	lakeTorsoAnimCop = malloc(sizeof(f32) * (sizeof(lakeTorsoAnim) / sizeof(f32)));
-
-	f32 *scissor1AnimCop;
-	scissor1AnimCop = malloc(sizeof(f32) * (sizeof(scissor1Anim) / sizeof(f32)));
-
-	f32 *scissor2AnimCop;
-	scissor2AnimCop = malloc(sizeof(f32) * (sizeof(scissor2Anim) / sizeof(f32)));
-
-	f32 *lakeMouthEhAnimCop;
-	lakeMouthEhAnimCop = malloc(sizeof(f32) * (sizeof(lakeMouthEhAnim) / sizeof(f32)));
-
-	f32 *lakeMouthTeAnimCop;
-	lakeMouthTeAnimCop = malloc(sizeof(f32) * (sizeof(lakeMouthClosejawShoteefAnim) / sizeof(f32)));
-
-	f32 *lakeMouthClAnimCop;
-	lakeMouthClAnimCop = malloc(sizeof(f32) * (sizeof(lakeMouthCloseAnim) / sizeof(f32)));
-
-	f32 *lakeMouthOAnimCop;
-	lakeMouthOAnimCop = malloc(sizeof(f32) * (sizeof(lakeMouthOAnim) / sizeof(f32)));
-
-	f32 *lakeMouthMAnimCop;
-	lakeMouthMAnimCop = malloc(sizeof(f32) * (sizeof(lakeMouthMAnim) / sizeof(f32)));
-
-	f32 *camAnimCop;
-	camAnimCop = malloc(sizeof(f32) * (sizeof(cameraAnim) / sizeof(f32)));
-
-	f32 *camFovAnimCop;
-	camFovAnimCop = malloc(sizeof(f32) * (sizeof(cameraFovAnim) / sizeof(f32)));
-
-	f32 *stringAnimShortCop;
-	stringAnimShortCop = malloc(sizeof(f32) * (3285));
-	
-	f32 *lakeClipAnim;
-	lakeClipAnim = malloc(sizeof(f32) * (1620));
-	
-	/*for (int k = 0; k < sizeof(lakeHairRegularAnim) / sizeof(f32); k++) { 
-		lakeHairRegularAnimCop[k] = lakeHairRegularAnim[k];
-	}*/
-
-	for (int k = 0; k < sizeof(lakeHeadAnim) / sizeof(f32); k++) { 
-		lakeHeadAnimCop[k] = lakeHeadAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeEyeAnim) / sizeof(f32); k++) { 
-		lakeEyeAnimCop[k] = lakeEyeAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakePupilLAnim) / sizeof(f32); k++) { 
-		lakePupilLAnimCop[k] = lakePupilLAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakePupilRAnim) / sizeof(f32); k++) { 
-		lakePupilRAnimCop[k] = lakePupilRAnim[k];
-	}
-	
-	for (int k = 0; k < sizeof(lakeEyebrowAnim) / sizeof(f32); k++) { 
-		lakeEyebrowAnimCop[k] = lakeEyebrowAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeTorsoAnim) / sizeof(f32); k++) { 
-		lakeTorsoAnimCop[k] = lakeTorsoAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHairRipLeftAnim) / sizeof(f32); k++) {  //
-		lakeHairLeftAnimCop[k] = lakeHairRipLeftAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeHairRipRightAnim) / sizeof(f32); k++) { 
-		lakeHairRightAnimCop[k] = lakeHairRipRightAnim[k];
-	}
-
-
-
-	for (int k = 0; k < sizeof(scissor1Anim) / sizeof(f32); k++) { 
-		scissor1AnimCop[k] = scissor1Anim[k];
-	}
-
-	for (int k = 0; k < sizeof(scissor1Anim) / sizeof(f32); k++) { 
-		scissor2AnimCop[k] = scissor2Anim[k];
-	}
-
-
-
-	for (int k = 0; k < sizeof(lakeMouthEhAnim) / sizeof(f32); k++) { 
-		lakeMouthEhAnimCop[k] = lakeMouthEhAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthClosejawShoteefAnim) / sizeof(f32); k++) { 
-		lakeMouthTeAnimCop[k] = lakeMouthClosejawShoteefAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthCloseAnim) / sizeof(f32); k++) { 
-		lakeMouthClAnimCop[k] = lakeMouthCloseAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthOAnim) / sizeof(f32); k++) { 
-		lakeMouthOAnimCop[k] = lakeMouthOAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(lakeMouthOAnim) / sizeof(f32); k++) { 
-		lakeMouthMAnimCop[k] = lakeMouthMAnim[k];
-	}
-
-
-
-	for (int k = 0; k < sizeof(cameraAnim) / sizeof(f32); k++) { 
-		camAnimCop[k] = cameraAnim[k];
-	}
-
-	for (int k = 0; k < sizeof(cameraFovAnim) / sizeof(f32); k++) { 
-		camFovAnimCop[k] = cameraFovAnim[k];
-	}
-
-	for (int k = 0; k < 3285; k++) { 
-		stringAnimShortCop[k] = stringAnimShort[k];
-	}
-
-	for (int k = 0; k < 1620; k++) { 
-		lakeClipAnim[k] = lakeHairCutBitAnim[k];
-	}
-
 	//this is the part of the coed where i put a cool  unicode braille block  art picture of lake
 
 	// ⣿⣽⣿⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⣿⡿⣿⣿⢿⣿⢿⣯⡿⣽⣽⣽⣽⣽⡽⣽⢞
@@ -632,30 +200,31 @@ int main(int argc,char **argv)
 	// this concludes the part ofthe code where i put a cool  unicode braille block  art picture of lake
 
 
-
-	for (int i = 0; i < sizeof(lakeHairVertCol) / sizeof(f32); i++) { //convert color please
-		mdl1VertColk[i] = mdl1VertColk[i] * 0.12f;
-		mdl1VertColk[i] = sqrt(mdl1VertColk[i]);
+	
+	//Mess up color data
+	for (int i = 0; i < sizeof(lakeHairVertCol) / sizeof(f32); i++) {
+		lakeHairVertCol[i] = lakeHairVertCol[i] * 0.12f;
+		lakeHairVertCol[i] = sqrt(lakeHairVertCol[i]);
 	}
 	
-	for (int i = 0; i < sizeof(lakeHeadVertCol) / sizeof(f32); i++) { //convert color please
-		mdl2VertColk[i] = mdl2VertColk[i] * 0.95f;
-		mdl2VertColk[i] = sqrt(mdl2VertColk[i]);
+	for (int i = 0; i < sizeof(lakeHeadVertCol) / sizeof(f32); i++) {
+		lakeHeadVertCol[i] = lakeHeadVertCol[i] * 0.95f;
+		lakeHeadVertCol[i] = sqrt(lakeHeadVertCol[i]);
 	}
 
-	for (int i = 0; i < sizeof(lakeBodyVertCol) / sizeof(f32); i++) { //convert color please
-		mdl5VertColk[i] = mdl5VertColk[i] * 0.12f;
-		mdl5VertColk[i] = sqrt(mdl5VertColk[i]);
+	for (int i = 0; i < sizeof(lakeBodyVertCol) / sizeof(f32); i++) {
+		lakeBodyVertCol[i] = lakeBodyVertCol[i] * 0.12f;
+		lakeBodyVertCol[i] = sqrt(lakeBodyVertCol[i]);
 	}
 
-	for (int i = 0; i < sizeof(lakeHairRipRightVertCol) / sizeof(f32); i++) { //convert color please
-		mdl6VertColk[i] = mdl6VertColk[i] * 0.2f;
-		mdl6VertColk[i] = sqrt(mdl6VertColk[i]);
+	for (int i = 0; i < sizeof(lakeHairRipRightVertCol) / sizeof(f32); i++) {
+		lakeHairRipRightVertCol[i] = lakeHairRipRightVertCol[i] * 0.2f;
+		lakeHairRipRightVertCol[i] = sqrt(lakeHairRipRightVertCol[i]);
 	}
 
-	for (int i = 0; i < sizeof(lakeHairRipLeftVertCol) / sizeof(f32); i++) { //convert color please
-		mdl7VertColk[i] = mdl7VertColk[i] * 0.2f;
-		mdl7VertColk[i] = sqrt(mdl7VertColk[i]);
+	for (int i = 0; i < sizeof(lakeHairRipLeftVertCol) / sizeof(f32); i++) {
+		lakeHairRipLeftVertCol[i] = lakeHairRipLeftVertCol[i] * 0.2f;
+		lakeHairRipLeftVertCol[i] = sqrt(lakeHairRipLeftVertCol[i]);
 	}
 
 	PlayOgg(nowhereToGoShortMix_ogg, nowhereToGoShortMix_ogg_size, 0, OGG_ONE_TIME);
@@ -676,10 +245,12 @@ int main(int argc,char **argv)
 
 	while(1) {
 		WPAD_ScanPads();
-		if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME) {
+		PAD_ScanPads();
+		if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME || PAD_ButtonsDown(0) & PAD_BUTTON_START) {
 			StopOgg();
 			exit(0);
-		}		/*
+		}
+		/*
 		if ( WPAD_ButtonsDown(0) & WPAD_BUTTON_B) {
 			StopOgg();
 			PlayOgg(nowhereToGoShortMix_ogg, nowhereToGoShortMix_ogg_size, 0, OGG_ONE_TIME);
@@ -745,513 +316,356 @@ int main(int argc,char **argv)
 			case 1614: printf("\n");break;
 		}
 
+		//This function applies a tev config
 		GX_SetTevOp(GX_TEVSTAGE0,GX_PASSCLR);
-		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0); 
-		
+		//This one sets inputs for it
+		GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 
-		view[0][0] = camAnimCop[(frame * 12) + 0];
-		view[0][1] = camAnimCop[(frame * 12) + 1];
-		view[0][2] = camAnimCop[(frame * 12) + 2];
-		view[0][3] = camAnimCop[(frame * 12) + 3];	
-		view[1][0] = camAnimCop[(frame * 12) + 4];		
-		view[1][1] = camAnimCop[(frame * 12) + 5];		
-		view[1][2] = camAnimCop[(frame * 12) + 6];		
-		view[1][3] = camAnimCop[(frame * 12) + 7];		
-		view[2][0] = camAnimCop[(frame * 12) + 8];		
-		view[2][1] = camAnimCop[(frame * 12) + 9];		
-		view[2][2] = camAnimCop[(frame * 12) + 10];		
-		view[2][3] = camAnimCop[(frame * 12) + 11];			
+		//We'll need these a bunch
+		int frame12 = frame * 12;
+		int frame9 = frame * 9;
+
+		//View matrix per frame is pregenerated
+		//... sorry
+		view[0][0] = cameraAnim[frame12];
+		view[0][1] = cameraAnim[frame12 + 1];
+		view[0][2] = cameraAnim[frame12 + 2];
+		view[0][3] = cameraAnim[frame12 + 3];	
+		view[1][0] = cameraAnim[frame12 + 4];		
+		view[1][1] = cameraAnim[frame12 + 5];		
+		view[1][2] = cameraAnim[frame12 + 6];		
+		view[1][3] = cameraAnim[frame12 + 7];		
+		view[2][0] = cameraAnim[frame12 + 8];		
+		view[2][1] = cameraAnim[frame12 + 9];		
+		view[2][2] = cameraAnim[frame12 + 10];		
+		view[2][3] = cameraAnim[frame12 + 11];
 		
-		//guLookAt(view, &cam, &up, &look);
-		guPerspective(perspective, camFovAnimCop[frame] * 1.6f, aspect, 0.5F, 30.0F);
+		guPerspective(perspective, cameraFovAnim[frame] * 1.6f, aspect, 0.5F, 30.0F);
 		GX_LoadProjectionMtx(perspective, GX_PERSPECTIVE);
 
 		GX_ClearVtxDesc();
 		GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 
-		
-		if (frame < 1203) {
-		guMtxIdentity(model);                                                  //His hair
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		//This is a pointer to the 9 floats required to build the matrices
+		float * modeltransform;
+	
+		if (frame < 1203) {                                                //His hair isnt used after this frame
+			modeltransform = &lakeHeadAnim[frame9];
+			//Now modeltransform can be indexed into for this frame's transform
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeHeadAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeHeadAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeHeadAnimCop[(frame * 9) + 5]);
+			//These gu functions, the ones without "apply" in the name, return the same matrix depending on the input values
+			//regardless of the contents of the matrix that you pass to them.
+			guMtxRotRad(mrx, 'x', modeltransform[3]);
+			guMtxRotRad(mry, 'y', modeltransform[4]);
+			guMtxRotRad(mrz, 'z', modeltransform[5]);
+			guMtxConcat(mrz,mry,mry); //Matrix multiply A and B and put it in C
+			guMtxConcat(mry,mrx,model);
 
-		guMtxConcat(mrz,mry,mry); 
-		guMtxConcat(mry,mrx,model);
+			//This function applies its translation to what you pass to it
+			guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+			guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
+			guMtxConcat(model,model2,model);
+			guMtxConcat(view,model,modelview);
+			// load the modelview matrix into matrix memory
+			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		guMtxTransApply(model, model, (lakeHeadAnimCop[frame * 9]), lakeHeadAnimCop[(frame * 9) + 1], lakeHeadAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeHeadAnimCop[(frame * 9) + 6], lakeHeadAnimCop[(frame * 9) + 7], lakeHeadAnimCop[(frame * 9) + 8]);
-
-		guMtxConcat(model,model2,model);
-		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
-		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
-
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 681); //amount of faces data were sending ie faces times three
-
-		{
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 681); //amount of faces data were sending ie faces times three
 			for (int i = 0; i < 681; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl1VertWork[(i * 3)], (f32)mdl1VertWork[((i * 3) + 1)], (f32)mdl1VertWork[((i * 3) + 2)]);
-				//GX_TexCoord2f32(0.0f, 0.0f);
-				//GX_Color3f32(1.0f,1.0f,1.0f);
-				GX_Color3f32((f32)mdl1VertColk[(i * 3)], (f32)mdl1VertColk[((i * 3) + 1)], (f32)mdl1VertColk[((i * 3) + 2)]);
+				int i3 = i*3;
+				GX_Position3f32(lakehairVertPos[i3], lakehairVertPos[i3+1], lakehairVertPos[i3+2]);
+				GX_Color3f32(lakeHairVertCol[i3], lakeHairVertCol[i3+1], lakeHairVertCol[i3+2]);
 			}
-		}
-		GX_End();		
+			//GX_End(); //This function is actually empty, the GPU knows its time to stop when you've given it enough verts	
 		}		
 		
-		guMtxIdentity(model);                                                  //His hair , ripped  right
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		modeltransform = &lakeHairRipRightAnim[frame9];
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeHairRightAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeHairRightAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeHairRightAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeHairRightAnimCop[frame * 9]), lakeHairRightAnimCop[(frame * 9) + 1], lakeHairRightAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeHairRightAnimCop[(frame * 9) + 6], lakeHairRightAnimCop[(frame * 9) + 7], lakeHairRightAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 579); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 579; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl6VertWork[(i * 3)], (f32)mdl6VertWork[((i * 3) + 1)], (f32)mdl6VertWork[((i * 3) + 2)]);
-
-				GX_Color3f32((f32)mdl6VertColk[(i * 3)], (f32)mdl6VertColk[((i * 3) + 1)], (f32)mdl6VertColk[((i * 3) + 2)]);
-			}
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 579);
+		for (int i = 0; i < 579; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeHairRipRightVertPos[i3], lakeHairRipRightVertPos[i3+1], lakeHairRipRightVertPos[i3+2]);
+			GX_Color3f32(lakeHairRipRightVertCol[i3], lakeHairRipRightVertCol[i3+1], lakeHairRipRightVertCol[i3+2]);
 		}
-		GX_End();	
 
-		guMtxIdentity(model);                                                  //His hair , ripped  left
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		modeltransform = &lakeHairRipLeftAnim[frame9];
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeHairLeftAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeHairLeftAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeHairLeftAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeHairLeftAnimCop[frame * 9]), lakeHairLeftAnimCop[(frame * 9) + 1], lakeHairLeftAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeHairLeftAnimCop[(frame * 9) + 6], lakeHairLeftAnimCop[(frame * 9) + 7], lakeHairLeftAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 162); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 162);
+		for (int i = 0; i < 162; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeHairRipLeftVertPos[i3], lakeHairRipLeftVertPos[i3+1], lakeHairRipLeftVertPos[i3+2]);
+			GX_Color3f32(lakeHairRipLeftVertCol[i3], lakeHairRipLeftVertCol[i3+1], lakeHairRipLeftVertCol[i3+2]);
+		}	
 
-		{
-			for (int i = 0; i < 162; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl7VertWork[(i * 3)], (f32)mdl7VertWork[((i * 3) + 1)], (f32)mdl7VertWork[((i * 3) + 2)]);
+		modeltransform = &lakeHeadAnim[frame9];
 
-				GX_Color3f32((f32)mdl7VertColk[(i * 3)], (f32)mdl7VertColk[((i * 3) + 1)], (f32)mdl7VertColk[((i * 3) + 2)]);
-			}
-		}
-		GX_End();	
-
-		guMtxIdentity(model);                                                  //His head
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeHeadAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeHeadAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeHeadAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeHeadAnimCop[frame * 9]), lakeHeadAnimCop[(frame * 9) + 1], lakeHeadAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeHeadAnimCop[(frame * 9) + 6], lakeHeadAnimCop[(frame * 9) + 7], lakeHeadAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 102); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 102);
+		for (int i = 0; i < 102; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeHeadVertPos[i3], lakeHeadVertPos[i3+1], lakeHeadVertPos[i3+2]);
+			GX_Color3f32(lakeHeadVertCol[i3], lakeHeadVertCol[i3+1], lakeHeadVertCol[i3+2]);
+		}	
 
-		{
-			for (int i = 0; i < 102; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl2VertWork[(i * 3)], (f32)mdl2VertWork[((i * 3) + 1)], (f32)mdl2VertWork[((i * 3) + 2)]);
+		modeltransform = &lakeEyeAnim[frame9];
 
-				//GX_Color3f32(1.0f,1.0f,1.0f);
-				GX_Color3f32((f32)mdl2VertColk[(i * 3)], (f32)mdl2VertColk[((i * 3) + 1)], (f32)mdl2VertColk[((i * 3) + 2)]);
-			}
-		}
-		GX_End();	
-
-		guMtxIdentity(model);                                                  //His eyes
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeEyeAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeEyeAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeEyeAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeEyeAnimCop[frame * 9]), lakeEyeAnimCop[(frame * 9) + 1], lakeEyeAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeEyeAnimCop[(frame * 9) + 6], lakeEyeAnimCop[(frame * 9) + 7], lakeEyeAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 180); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 180);
+		for (int i = 0; i < 180; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeEyeVertPos[i3], lakeEyeVertPos[i3+1], lakeEyeVertPos[i3+2]);
+			GX_Color3f32(1.0f,1.0f,1.0f);
+		}	
 
-		{
-			for (int i = 0; i < 180; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl3VertWork[(i * 3)], (f32)mdl3VertWork[((i * 3) + 1)], (f32)mdl3VertWork[((i * 3) + 2)]);
+		modeltransform = &lakePupilLAnim[frame9];
 
-				GX_Color3f32(1.0f,1.0f,1.0f);
-			}
-		}
-		GX_End();	
-
-		guMtxIdentity(model);                                                  //His left pupil
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakePupilLAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakePupilLAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakePupilLAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakePupilLAnimCop[frame * 9]), lakePupilLAnimCop[(frame * 9) + 1], lakePupilLAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakePupilLAnimCop[(frame * 9) + 6], lakePupilLAnimCop[(frame * 9) + 7], lakePupilLAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 6); //amount of faces data were sending ie faces times three
+		GX_Position3f32(1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
 
-		{
-			GX_Position3f32(1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);	
 
-			GX_Position3f32(1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-		}
-		GX_End();	
+		modeltransform = &lakePupilRAnim[frame9];
 
-		guMtxIdentity(model);                                                  //His right pupil
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakePupilRAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakePupilRAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakePupilRAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakePupilRAnimCop[frame * 9]), lakePupilRAnimCop[(frame * 9) + 1], lakePupilRAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakePupilRAnimCop[(frame * 9) + 6], lakePupilRAnimCop[(frame * 9) + 7], lakePupilRAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
 		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 6); //amount of faces data were sending ie faces times three
+		GX_Position3f32(1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
 
-		{
-			GX_Position3f32(1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(1.0f, -1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
+		GX_Position3f32(-1.0f, 1.0f, 0.0f);
+		GX_Color3f32(0.0f,0.0f,0.0f);
 
-			GX_Position3f32(1.0f, -1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-			GX_Position3f32(-1.0f, 1.0f, 0.0f);
-			GX_Color3f32(0.0f,0.0f,0.0f);
-		}
-		GX_End();	
+		modeltransform = &lakeEyebrowAnim[frame9];
 
-		guMtxIdentity(model);                                                  //His eyebrows
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeEyebrowAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeEyebrowAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeEyebrowAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeEyebrowAnimCop[frame * 9]), lakeEyebrowAnimCop[(frame * 9) + 1], lakeEyebrowAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeEyebrowAnimCop[(frame * 9) + 6], lakeEyebrowAnimCop[(frame * 9) + 7], lakeEyebrowAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 384); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 384; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl4VertWork[(i * 3)], (f32)mdl4VertWork[((i * 3) + 1)], (f32)mdl4VertWork[((i * 3) + 2)]);
-
-				GX_Color3f32(1.0f,1.0f,1.0f);
-			}
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 384);
+		for (int i = 0; i < 384; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeEyebrowVertPos[i3], lakeEyebrowVertPos[i3+1], lakeEyebrowVertPos[i3+2]);
+			GX_Color3f32(1.0f,1.0f,1.0f);
 		}
-		GX_End();
 
-		guMtxIdentity(model);                                                  //Eh mouth
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		modeltransform = &lakeMouthEhAnim[frame9];
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeMouthEhAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeMouthEhAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeMouthEhAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeMouthEhAnimCop[frame * 9]), lakeMouthEhAnimCop[(frame * 9) + 1], lakeMouthEhAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeMouthEhAnimCop[(frame * 9) + 6], lakeMouthEhAnimCop[(frame * 9) + 7], lakeMouthEhAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 474); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 474);
+		for (int i = 0; i < 474; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeMouthEhVertPos[i3], lakeMouthEhVertPos[i3+1], lakeMouthEhVertPos[i3+2]);
+			GX_Color3f32(lakeMouthEhVertCol[i3], lakeMouthEhVertCol[i3+1], lakeMouthEhVertCol[i3+2]);
+		}	
 
-		{
-			for (int i = 0; i < 474; i++) {  //put same number here too
-				GX_Position3f32((f32)mouthEhWork[(i * 3)], (f32)mouthEhWork[((i * 3) + 1)], (f32)mouthEhWork[((i * 3) + 2)]);
+		modeltransform = &lakeMouthClosejawShoteefAnim[frame9];
 
-				GX_Color3f32((f32)mouthEhColk[(i * 3)], (f32)mouthEhColk[((i * 3) + 1)], (f32)mouthEhColk[((i * 3) + 2)]);
-			}
-		}
-		GX_End();	
-
-		guMtxIdentity(model);                                                  //Teeth mouth
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeMouthTeAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeMouthTeAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeMouthTeAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeMouthTeAnimCop[frame * 9]), lakeMouthTeAnimCop[(frame * 9) + 1], lakeMouthTeAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeMouthTeAnimCop[(frame * 9) + 6], lakeMouthTeAnimCop[(frame * 9) + 7], lakeMouthTeAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 24); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 24; i++) {  //put same number here too
-				GX_Position3f32((f32)mouthTeWork[(i * 3)], (f32)mouthTeWork[((i * 3) + 1)], (f32)mouthTeWork[((i * 3) + 2)]);
-
-				GX_Color3f32((f32)mouthTeColk[(i * 3)], (f32)mouthTeColk[((i * 3) + 1)], (f32)mouthTeColk[((i * 3) + 2)]);
-			}
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 24);
+		for (int i = 0; i < 24; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeMouthTeethVertPos[i3], lakeMouthTeethVertPos[i3+1], lakeMouthTeethVertPos[i3+2]);
+			GX_Color3f32(lakeMouthTeethVertCol[i3], lakeMouthTeethVertCol[i3+1], lakeMouthTeethVertCol[i3+2]);
 		}
-		GX_End();
 
-		guMtxIdentity(model);                                                  //Close mouth
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		modeltransform = &lakeMouthCloseAnim[frame9];
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeMouthClAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeMouthClAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeMouthClAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeMouthClAnimCop[frame * 9]), lakeMouthClAnimCop[(frame * 9) + 1], lakeMouthClAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeMouthClAnimCop[(frame * 9) + 6], lakeMouthClAnimCop[(frame * 9) + 7], lakeMouthClAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 12); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 12);
+		for (int i = 0; i < 12; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeMouthCloseVertPos[i3], lakeMouthCloseVertPos[i3+1], lakeMouthCloseVertPos[i3+2]);
+			GX_Color3f32(0.027f, 0.027f, 0.027f);
+		}	
 
-		{
-			for (int i = 0; i < 12; i++) {  //put same number here too
-				GX_Position3f32((f32)mouthClWork[(i * 3)], (f32)mouthClWork[((i * 3) + 1)], (f32)mouthClWork[((i * 3) + 2)]);
-			
-				GX_Color3f32(0.027f, 0.027f, 0.027f);
-			}
-		}
-		GX_End();	
+		modeltransform = &lakeMouthMAnim[frame9];
 
-		guMtxIdentity(model);                                                  // M mouth
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeMouthMAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeMouthMAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeMouthMAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeMouthMAnimCop[frame * 9]), lakeMouthMAnimCop[(frame * 9) + 1], lakeMouthMAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeMouthMAnimCop[(frame * 9) + 6], lakeMouthMAnimCop[(frame * 9) + 7], lakeMouthMAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 24); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 24; i++) {  //put same number here too
-				GX_Position3f32((f32)mouthMWork[(i * 3)], (f32)mouthMWork[((i * 3) + 1)], (f32)mouthMWork[((i * 3) + 2)]);
-			
-				GX_Color3f32(0.027f, 0.027f, 0.027f);
-			}
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 24);
+		for (int i = 0; i < 24; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeMouthMVertPos[i3], lakeMouthMVertPos[i3+1], lakeMouthMVertPos[i3+2]);
+			GX_Color3f32(0.027f, 0.027f, 0.027f);
 		}
-		GX_End();
 
-		guMtxIdentity(model);                                                  // O mouth
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
+		modeltransform = &lakeMouthOAnim[frame9];
 
-		guMtxRotAxisRad(mrx, &xaxis, lakeMouthOAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeMouthOAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeMouthOAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeMouthOAnimCop[frame * 9]), lakeMouthOAnimCop[(frame * 9) + 1], lakeMouthOAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeMouthOAnimCop[(frame * 9) + 6], lakeMouthOAnimCop[(frame * 9) + 7], lakeMouthOAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 36); //amount of faces data were sending ie faces times three
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 36);
+		for (int i = 0; i < 36; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeMouthOVertPos[i3], lakeMouthOVertPos[i3+1], lakeMouthOVertPos[i3+2]);
+			GX_Color3f32(0.027f, 0.027f, 0.027f);
+		}	
 
-		{
-			for (int i = 0; i < 36; i++) {  //put same number here too
-				GX_Position3f32((f32)mouthOWork[(i * 3)], (f32)mouthOWork[((i * 3) + 1)], (f32)mouthOWork[((i * 3) + 2)]);
-			
-				GX_Color3f32(0.027f, 0.027f, 0.027f);
-			}
-		}
-		GX_End();	
+		modeltransform = &lakeTorsoAnim[frame9];
 
-		guMtxIdentity(model);                                                  //His body
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, lakeTorsoAnimCop[(frame * 9) + 3]);
-		guMtxRotAxisRad(mry, &yaxis, lakeTorsoAnimCop[(frame * 9) + 4]);
-		guMtxRotAxisRad(mrz, &zaxis, lakeTorsoAnimCop[(frame * 9) + 5]);
-
+		guMtxRotRad(mrx, 'x', modeltransform[3]);
+		guMtxRotRad(mry, 'y', modeltransform[4]);
+		guMtxRotRad(mrz, 'z', modeltransform[5]);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxTransApply(model, model, (lakeTorsoAnimCop[frame * 9]), lakeTorsoAnimCop[(frame * 9) + 1], lakeTorsoAnimCop[(frame * 9) + 2]);
-
-		guMtxScaleApply(model2, model2, lakeTorsoAnimCop[(frame * 9) + 6], lakeTorsoAnimCop[(frame * 9) + 7], lakeTorsoAnimCop[(frame * 9) + 8]);
-
+		guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+		guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 69); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 69; i++) {  //put same number here too
-				GX_Position3f32((f32)mdl5VertWork[(i * 3)], (f32)mdl5VertWork[((i * 3) + 1)], (f32)mdl5VertWork[((i * 3) + 2)]);
-
-				GX_Color3f32((f32)mdl5VertColk[(i * 3)], (f32)mdl5VertColk[((i * 3) + 1)], (f32)mdl5VertColk[((i * 3) + 2)]);
-			}
-		}
-		GX_End();	
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 69);
+		for (int i = 0; i < 69; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(lakeBodyVertPos[i3], lakeBodyVertPos[i3+1], lakeBodyVertPos[i3+2]);
+			GX_Color3f32(lakeBodyVertCol[i3], lakeBodyVertCol[i3+1], lakeBodyVertCol[i3+2]);
+		}	
 
 		struct stage {
 			f32 x;
@@ -1289,163 +703,105 @@ int main(int argc,char **argv)
 			stage.sz = 2.0f;
 		}
 
-		guMtxIdentity(model);                                                  //Stage
-		guMtxIdentity(model2);
-		guMtxIdentity(mrx);
-		guMtxIdentity(mry);
-		guMtxIdentity(mrz);
-
-		guMtxRotAxisRad(mrx, &xaxis, stage.rx);
-		guMtxRotAxisRad(mry, &yaxis, stage.ry);
-		guMtxRotAxisRad(mrz, &zaxis, stage.rz);
-
+		guMtxRotRad(mrx, 'x', stage.rx);
+		guMtxRotRad(mry, 'y', stage.ry);
+		guMtxRotRad(mrz, 'z', stage.rz);
 		guMtxConcat(mrz,mry,mry); 
 		guMtxConcat(mry,mrx,model);
-
-		guMtxScaleApply(model2, model2, stage.sx, stage.sy, stage.sz);
-
 		guMtxTransApply(model, model, stage.x, stage.y, stage.z);
-
+		guMtxScale(model2, stage.sx, stage.sy, stage.sz);
 		guMtxConcat(model,model2,model);
 		guMtxConcat(view,model,modelview);
-		// load the modelview matrix into matrix memory
+		
 		GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 18); //amount of faces data were sending ie faces times three
-
-		{
-			for (int i = 0; i < 18; i++) {  //put same number here too
-				GX_Position3f32((f32)stageVertPosCop[(i * 3)], (f32)stageVertPosCop[((i * 3) + 1)], (f32)stageVertPosCop[((i * 3) + 2)]);
-
-				GX_Color3f32((f32)stageVertColCop[(i * 3)], (f32)stageVertColCop[((i * 3) + 1)], (f32)stageVertColCop[((i * 3) + 2)]);
-			}
-		}
-		GX_End();	
+		GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 18);
+		for (int i = 0; i < 18; i++) {
+			int i3 = i * 3;
+			GX_Position3f32(stageVertPos[i3], stageVertPos[i3+1], stageVertPos[i3+2]);
+			GX_Color3f32(stageVertCol[i3], stageVertCol[i3+1], stageVertCol[i3+2]);
+		}	
 	
 		if (frame > 165 && frame < 340) {
-			guMtxIdentity(model);                                                  //scissor 1
-			guMtxIdentity(model2);
-			guMtxIdentity(mrx);
-			guMtxIdentity(mry);
-			guMtxIdentity(mrz);
+			modeltransform = &scissor1Anim[frame9];
 
-			guMtxRotAxisRad(mrx, &xaxis, scissor1AnimCop[(frame * 9) + 3]);
-			guMtxRotAxisRad(mry, &yaxis, scissor1AnimCop[(frame * 9) + 4]);
-			guMtxRotAxisRad(mrz, &zaxis, scissor1AnimCop[(frame * 9) + 5]);
-
+			guMtxRotRad(mrx, 'x', modeltransform[3]);
+			guMtxRotRad(mry, 'y', modeltransform[4]);
+			guMtxRotRad(mrz, 'z', modeltransform[5]);
 			guMtxConcat(mrz,mry,mry); 
 			guMtxConcat(mry,mrx,model);
-
-			guMtxTransApply(model, model, (scissor1AnimCop[frame * 9]), scissor1AnimCop[(frame * 9) + 1], scissor1AnimCop[(frame * 9) + 2]);
-
-			guMtxScaleApply(model2, model2, scissor1AnimCop[(frame * 9) + 6], scissor1AnimCop[(frame * 9) + 7], scissor1AnimCop[(frame * 9) + 8]);
-
+			guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+			guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 			guMtxConcat(model,model2,model);
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 2514); //amount of faces data were sending ie faces times three
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 2514);
+			for (int i = 0; i < 2514; i++) {
+				int i3 = i * 3;
+				GX_Position3f32(scissor1VertPos[i3], scissor1VertPos[i3+1], scissor1VertPos[i3+2]);
+				GX_Color3f32(scissor1VertCol[i3], scissor1VertCol[i3+1], scissor1VertCol[i3+2]);
+			}	
 
-			{
-				for (int i = 0; i < 2514; i++) {  //put same number here too
-					GX_Position3f32((f32)sc1vpcop[(i * 3)], (f32)sc1vpcop[((i * 3) + 1)], (f32)sc1vpcop[((i * 3) + 2)]);
-	
-					GX_Color3f32((f32)sc1vccop[(i * 3)], (f32)sc1vccop[((i * 3) + 1)], (f32)sc1vccop[((i * 3) + 2)]);
-				}
-			}
-			GX_End();	
+			modeltransform = &scissor2Anim[frame9];
 
-			guMtxIdentity(model);                                                  //scissor 2
-			guMtxIdentity(model2);
-			guMtxIdentity(mrx);
-			guMtxIdentity(mry);
-			guMtxIdentity(mrz);
-
-			guMtxRotAxisRad(mrx, &xaxis, scissor2AnimCop[(frame * 9) + 3]);
-			guMtxRotAxisRad(mry, &yaxis, scissor2AnimCop[(frame * 9) + 4]);
-			guMtxRotAxisRad(mrz, &zaxis, scissor2AnimCop[(frame * 9) + 5]);
-
+			guMtxRotRad(mrx, 'x', modeltransform[3]);
+			guMtxRotRad(mry, 'y', modeltransform[4]);
+			guMtxRotRad(mrz, 'z', modeltransform[5]);
 			guMtxConcat(mrz,mry,mry); 
 			guMtxConcat(mry,mrx,model);
-
-			guMtxTransApply(model, model, (scissor2AnimCop[frame * 9]), scissor2AnimCop[(frame * 9) + 1], scissor2AnimCop[(frame * 9) + 2]);
-
-			guMtxScaleApply(model2, model2, scissor2AnimCop[(frame * 9) + 6], scissor2AnimCop[(frame * 9) + 7], scissor2AnimCop[(frame * 9) + 8]);
-
+			guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+			guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 			guMtxConcat(model,model2,model);
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 1452); //amount of faces data were sending ie faces times three
-
-			{
-				for (int i = 0; i < 1452; i++) {  //put same number here too
-					GX_Position3f32((f32)sc2vpcop[(i * 3)], (f32)sc2vpcop[((i * 3) + 1)], (f32)sc2vpcop[((i * 3) + 2)]);
-	
-					GX_Color3f32((f32)sc2vccop[(i * 3)], (f32)sc2vccop[((i * 3) + 1)], (f32)sc2vccop[((i * 3) + 2)]);
-				}
-			}
-			GX_End();	
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 1452);
+			for (int i = 0; i < 1452; i++) {
+				int i3 = i * 3;
+				GX_Position3f32(scissor2VertPos[i3], scissor2VertPos[i3+1], scissor2VertPos[i3+2]);
+				GX_Color3f32(scissor2VertCol[i3], scissor2VertCol[i3+1], scissor2VertCol[i3+2]);
+			}	
 		}
 
 		if (frame > 842 && frame < 1204) {
-			guMtxIdentity(model);                                                  //string
-			guMtxIdentity(model2);
-			guMtxIdentity(mrx);
-			guMtxIdentity(mry);
-			guMtxIdentity(mrz);
+			modeltransform = &stringAnimShort[frame9 - 7551]; //7551 is 839 * 9, and 839 is the when the anim for the string starts
 
-			guMtxRotAxisRad(mrx, &xaxis, stringAnimShortCop[((frame - 839) * 9) + 3]);
-			guMtxRotAxisRad(mry, &yaxis, stringAnimShortCop[((frame - 839) * 9) + 4]);
-			guMtxRotAxisRad(mrz, &zaxis, stringAnimShortCop[((frame - 839) * 9) + 5]);
-
+			guMtxRotRad(mrx, 'x', modeltransform[3]);
+			guMtxRotRad(mry, 'y', modeltransform[4]);
+			guMtxRotRad(mrz, 'z', modeltransform[5]);
 			guMtxConcat(mrz,mry,mry); 
 			guMtxConcat(mry,mrx,model);
-
-			guMtxTransApply(model, model, (stringAnimShortCop[((frame - 839) * 9) + 0]), (stringAnimShortCop[((frame - 839) * 9) + 1]), stringAnimShortCop[((frame - 839) * 9) + 2]);
-
-			guMtxScaleApply(model2, model2, stringAnimShortCop[((frame - 839) * 9) + 6], stringAnimShortCop[((frame - 839) * 9) + 7], stringAnimShortCop[((frame - 839) * 9) + 8]);
-
+			guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+			guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 			guMtxConcat(model,model2,model);
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 600); //amount of faces data were sending ie faces times three
-
-			{
-				for (int i = 0; i < 600; i++) {  //put same number here too
-					GX_Position3f32((f32)stringVertPosCop[(i * 3)], (f32)stringVertPosCop[((i * 3) + 1)], (f32)stringVertPosCop[((i * 3) + 2)]);
-	
-					GX_Color3f32(0.672f, 0.672f, 0.672f);
-				}
-			}
-			GX_End();		
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 600);
+			for (int i = 0; i < 600; i++) {
+				int i3 = i * 3;
+				GX_Position3f32((f32)stringVertPos[i3], (f32)stringVertPos[i3+1], (f32)stringVertPos[i3+2]);
+				GX_Color3f32(0.672f, 0.672f, 0.672f);
+			}		
 		}
 
 		if (frame > 171 && frame < 349) {
-			guMtxIdentity(model);                                                  //hair clipping
-			guMtxIdentity(model2);
-			guMtxIdentity(mrx);
-			guMtxIdentity(mry);
-			guMtxIdentity(mrz);
+			modeltransform = &lakeHairCutBitAnim[frame9 - 1521];
 
-			guMtxRotAxisRad(mrx, &xaxis, lakeClipAnim[((frame - 169) * 9) + 3]);
-			guMtxRotAxisRad(mry, &yaxis, lakeClipAnim[((frame - 169) * 9) + 4]);
-			guMtxRotAxisRad(mrz, &zaxis, lakeClipAnim[((frame - 169) * 9) + 5]);
-
+			guMtxRotRad(mrx, 'x', modeltransform[3]);
+			guMtxRotRad(mry, 'y', modeltransform[4]);
+			guMtxRotRad(mrz, 'z', modeltransform[5]);
 			guMtxConcat(mrz,mry,mry); 
 			guMtxConcat(mry,mrx,model);
-
-			guMtxTransApply(model, model, (lakeClipAnim[((frame - 169) * 9) + 0]), (lakeClipAnim[((frame - 169) * 9) + 1]), lakeClipAnim[((frame - 169) * 9) + 2]);
-
-			guMtxScaleApply(model2, model2, lakeClipAnim[((frame - 169) * 9) + 6], lakeClipAnim[((frame - 169) * 9) + 7], lakeClipAnim[((frame - 169) * 9) + 8]);
-
+			guMtxTransApply(model, model, modeltransform[0], modeltransform[1], modeltransform[2]);
+			guMtxScale(model2, modeltransform[6], modeltransform[7], modeltransform[8]);
 			guMtxConcat(model,model2,model);
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
 			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3); //amount of faces data were sending ie faces times three
@@ -1457,67 +813,54 @@ int main(int argc,char **argv)
 				GX_Color3f32(0.1496859f, 0.1496859f, 0.1496859f);
 				GX_Position3f32(0.082355f, -0.000000f, 0.080809f);
 				GX_Color3f32(0.1244663f, 0.1244663f, 0.1244663f);
-			}
-			GX_End();		
+			}		
 		}
 
 		if (frame > 1688 && frame < 1830) {
 			guMtxIdentity(model);                                                  //text3
 
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3789); //amount of faces data were sending ie faces times three
-
-			{
-				for (int i = 0; i < 3789; i++) {  //put same number here too
-					GX_Position3f32((f32)text3VertPosCop[(i * 3)], (f32)text3VertPosCop[((i * 3) + 1)], (f32)text3VertPosCop[((i * 3) + 2)]);
-	
-					GX_Color3f32(1.0f, 1.0f, 1.0f);
-				}
-			}
-			GX_End();	
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3789);
+			for (int i = 0; i < 3789; i++) {
+				int i3 = i * 3;
+				GX_Position3f32(text3VertPos[i3], text3VertPos[i3+1], text3VertPos[i3+2]);
+				GX_Color3f32(1.0f, 1.0f, 1.0f);
+			}	
 		}
 
 		if (frame > 1538 && frame < 1689) {
 			guMtxIdentity(model);                                                  //text1
 
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 5820); //amount of faces data were sending ie faces times three
-
-			{
-				for (int i = 0; i < 5820; i++) {  //put same number here too
-					GX_Position3f32((f32)text1VertPosCop[(i * 3)], (f32)text1VertPosCop[((i * 3) + 1)], (f32)text1VertPosCop[((i * 3) + 2)]);
-	
-					GX_Color3f32(1.0f, 1.0f, 1.0f);
-				}
-			}
-			GX_End();	
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 5820);
+			for (int i = 0; i < 5820; i++) {
+				int i3 = i * 3;
+				GX_Position3f32(text1VertPos[i3], text1VertPos[i3+1], text1VertPos[i3+2]);
+				GX_Color3f32(1.0f, 1.0f, 1.0f);
+			}	
 
 			guMtxIdentity(model);                                                  //text2
 
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 822); //amount of faces data were sending ie faces times three
-
-			{
-				for (int i = 0; i < 822; i++) {  //put same number here too
-					GX_Position3f32((f32)text2VertPosCop[(i * 3)], (f32)text2VertPosCop[((i * 3) + 1)], (f32)text2VertPosCop[((i * 3) + 2)]);
-	
-					GX_Color3f32(0.8f, 0.8f, 0.8f);
-				}
-			}
-			GX_End();		
+			GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 822);
+			for (int i = 0; i < 822; i++) {
+				int i3 = i * 3;
+				GX_Position3f32(text2VertPos[i3], text2VertPos[i3+1], text2VertPos[i3+2]);
+				GX_Color3f32(0.8f, 0.8f, 0.8f);
+			}		
 	
 
 
-			GX_SetTevOp(GX_TEVSTAGE0,GX_REPLACE);                                 //change settings for the first tev stage to handle textures instead of skipping texture tasks
+			GX_SetTevOp(GX_TEVSTAGE0,GX_REPLACE);                                 //change settings for the first tev stage to handle textures
 			GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0); 
 
 			GX_ClearVtxDesc();
@@ -1527,26 +870,22 @@ int main(int argc,char **argv)
 			guMtxIdentity(model);                                                  //album art
 
 			guMtxConcat(view,model,modelview);
-			// load the modelview matrix into matrix memory
+			
 			GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
 			GX_Begin(GX_TRIANGLES, GX_VTXFMT1, 6); //amount of faces data were sending ie faces times three
-
-			{
-				GX_Position3f32(-1.0414f, -0.000001f, 3.10628f);
-				GX_TexCoord2f32(0.0f, 0.0f);
-				GX_Position3f32(-1.0414f, -0.000001f, 1.261f);
-				GX_TexCoord2f32(0.0f, 1.0f);
-				GX_Position3f32(0.803878f, -0.000001f, 1.261f);
-				GX_TexCoord2f32(1.0f, 1.0f);
-				GX_Position3f32(0.803878f, -0.000001f, 1.261f);
-				GX_TexCoord2f32(1.0f, 1.0f);
-				GX_Position3f32(0.803878f, -0.000001f, 3.10628f);
-				GX_TexCoord2f32(1.0f, 0.0f);
-				GX_Position3f32(-1.0414f, -0.000001f, 3.10628f);
-				GX_TexCoord2f32(0.0f, 0.0f);
-			}
-			GX_End();	
+			GX_Position3f32(-1.0414f, -0.000001f, 3.10628f);
+			GX_TexCoord2f32(0.0f, 0.0f);
+			GX_Position3f32(-1.0414f, -0.000001f, 1.261f);
+			GX_TexCoord2f32(0.0f, 1.0f);
+			GX_Position3f32(0.803878f, -0.000001f, 1.261f);
+			GX_TexCoord2f32(1.0f, 1.0f);
+			GX_Position3f32(0.803878f, -0.000001f, 1.261f);
+			GX_TexCoord2f32(1.0f, 1.0f);
+			GX_Position3f32(0.803878f, -0.000001f, 3.10628f);
+			GX_TexCoord2f32(1.0f, 0.0f);
+			GX_Position3f32(-1.0414f, -0.000001f, 3.10628f);
+			GX_TexCoord2f32(0.0f, 0.0f);
 		}
 	
 		GX_DrawDone();
